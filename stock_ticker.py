@@ -37,44 +37,50 @@ app.layout = html.Div([
                     ),
                 html.Div([
                         dcc.Dropdown(
-                        id='currency-selectos',
-                        options=[
-                            {'label': 'US Dollar', 'value': 'USD'},
-                            {'label': 'Euro', 'value': 'EUR'},
-                            {'label': 'Colombian Peso', 'value': 'COP'}
-                        ],
-                        placeholder='Change Currency'
-                            )
-                        ],
-                    style=dict(width='20%', display='inline-block', padding=15)
+                            id='currency-selector',
+                            options=[
+                                {'label': 'US Dollar', 'value': 'USD'},
+                                {'label': 'Euro', 'value': 'EUR'},
+                                {'label': 'Colombian Peso', 'value': 'COP'}
+                            ],
+                            placeholder='Change Currency'
+                                )
+                            ],
+                        style=dict(width='20%', display='inline-block', padding=15)
                     ),
                 dcc.Graph(
-                    id='stock_graph',
-                    figure={
-                        'data': [
-                            {'x': [1,2], 'y': [3,1]}
-                                ],
-                        'layout': dict(title='Pick a stock') 
-                        }
+                        id='stock_graph',
+                        figure={
+                            'data': [
+                                {'x': [1,2], 'y': [3,1]}
+                                    ],
+                            'layout': dict(title='Pick a stock') 
+                            }
                     )
 ])
 
 # ----- callbacks -----
-@app.callback(Output('stock_graph','figure'), [Input('stock_ticker','value')])
-def update_plot(input_value):
+@app.callback(Output('stock_graph','figure'), [Input('stock_ticker','value'), Input('currency-selector', 'value')])
+def update_plot(stock_ticker, selected_currency):
 
     today = datetime.today()
     start_date = today - timedelta(weeks=12)
     end_date = today
 
-    df = web.DataReader(input_value, 'iex', start_date, end_date, api_key=IEX_API_KEY)
-    print(df)
+    df = web.DataReader(stock_ticker, 'iex', start_date, end_date, api_key=IEX_API_KEY)
+
+    if selected_currency!=None:
+        exchange = web.av.forex.AVForexReader(symbols=f"USD/{selected_currency}", api_key=ALPHA_API_KEY)
+        print(type(exchange.read()))
+
+    
+    print(selected_currency)
 
     fig = {
             'data': [
                 {'x': df.index, 'y': df.close}
                     ],
-            'layout': dict(title=input_value) 
+            'layout': dict(title=stock_ticker) 
                     }
     return fig
 
