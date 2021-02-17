@@ -12,13 +12,14 @@ from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
 import pandas_datareader as web
+import requests
+import json
 import os
 from dotenv import load_dotenv
 
 # --- load api key ----
 load_dotenv()
 IEX_API_KEY = os.getenv('IEX_API_KEY')
-ALPHA_API_KEY= os.getenv('ALPHA_API_KEY')
 
 
 # ----- dash object -----
@@ -41,7 +42,7 @@ app.layout = html.Div([
                             options=[
                                 {'label': 'US Dollar', 'value': 'USD'},
                                 {'label': 'Euro', 'value': 'EUR'},
-                                {'label': 'Colombian Peso', 'value': 'COP'}
+                                {'label': 'Canadian Dollar', 'value': 'CAD'}
                             ],
                             placeholder='Change Currency'
                                 )
@@ -69,12 +70,12 @@ def update_plot(stock_ticker, selected_currency):
 
     df = web.DataReader(stock_ticker, 'iex', start_date, end_date, api_key=IEX_API_KEY)
 
+    # calculate new df values if currency is changed
     if selected_currency!=None:
-        exchange = web.av.forex.AVForexReader(symbols=f"USD/{selected_currency}", api_key=ALPHA_API_KEY)
-        print(type(exchange.read()))
+        exchange_matrix = exchange_rate_per_date(start_date, end_date, selected_currency) 
 
     
-    print(selected_currency)
+    print(selected_currency, '\n', exchange_matrix)
 
     fig = {
             'data': [
@@ -83,6 +84,28 @@ def update_plot(stock_ticker, selected_currency):
             'layout': dict(title=stock_ticker) 
                     }
     return fig
+
+# ----- functions -----
+
+def exchange_rate_per_date(start_date, end_date, currency):
+
+    start_date = start_date.strftime('%Y-%m-%d')
+    end_date = end_date.strftime('%Y-%m-%d')
+
+    url = f"https://api.exchangeratesapi.io/history?start_at={start_date}&end_at={end_date}&base=USD"
+    
+    response = requests.get(url)
+    data = response.text
+    parsed = json.loads(data)
+    rates = parsed["rates"]
+    
+    exchange_rate_by_date = {date: rates[date][f'{currency}'] for date in rates.keys()}
+
+    exchange_matrix = pd.Series(exchange_rate_by_date)
+    exchange_matrix.index = pd.to_datetime(exchange_matrix.index)
+    exchange_matrix.sort_index(inplace=True)
+    
+    return exchange_matrix
 
 # ----- run app -----
 if __name__ == '__main__':
