@@ -11,16 +11,17 @@ import dash_html_components as html
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
-import pandas_datareader as web
+# import pandas_datareader as web
 import requests
 import json
 import os
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 import pandas as pd
+import yfinance as yf
 
-# --- load api key ----
-load_dotenv()
-IEX_API_KEY = os.getenv('IEX_API_KEY')
+# # --- load api key ----
+# load_dotenv()
+# IEX_API_KEY = os.getenv('IEX_API_KEY')
 
 
 # ----- dash object -----
@@ -56,8 +57,8 @@ app.layout = html.Div([
                         html.H4('Change the dates'),
                         dcc.DatePickerRange(
                             id='date-picker',
-                            min_date_allowed=datetime(2010,1,1),
-                            max_date_allowed=datetime.today(),
+                            min_date_allowed=datetime(2010,1,1).date(),
+                            max_date_allowed=datetime.today().date(),
                             start_date=datetime.today() - timedelta(weeks=4),
                             end_date=datetime.today(),
                             day_size=25
@@ -82,23 +83,31 @@ app.layout = html.Div([
              Input('date-picker','start_date'), Input('date-picker', 'end_date')])
 def update_plot(stock_ticker, selected_currency, start_date, end_date):
 
-    df = web.DataReader(stock_ticker, 'iex', start_date, end_date, api_key=IEX_API_KEY)
+    # yfinance requires datetime-objects for start and end-arguments, but the callback-Input() passes string values
+    start_date_yf = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S.%f').date()
+    end_date_yf = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S.%f').date()
+
+
+    ticker = yf.Ticker(stock_ticker)
+    df = ticker.history(start=start_date_yf,  end=end_date_yf)
     df.sort_index(inplace=True)
 
+    # requests library requires string-objects for input in url that will retrieve cjurrency information - used in exchange_rate_per_date()
     start_date = start_date.split(' ')[0]
     end_date = end_date.split(' ')[0]
     
     # calculate new df values if currency is changed
     if selected_currency!=None and selected_currency != 'USD':
         exchange_matrix = exchange_rate_per_date(start_date, end_date, selected_currency) 
+        exchange_matrix = df_index_to_datetime(exchange_matrix) #convert exchange_matrix index to datetime, becsaue df index is also datetime and need to be the same for pd.concat()
         exchange_matrix.columns = ['exchange']
         df = pd.concat([df, exchange_matrix], axis=1)
-        df['close'] = df['close'] * df['exchange']
+        df['Close'] = df['Close'] * df['exchange']
         df.dropna(inplace=True)
 
     fig = {
         'data': [
-            {'x': df.index, 'y': df.close}
+            {'x': df.index, 'y': df['Close']}
                 ],
         'layout': dict(title=stock_ticker) 
                 }
@@ -124,6 +133,10 @@ def exchange_rate_per_date(start_date, end_date, currency):
     
     return exchange_matrix
 
+def df_index_to_datetime(input_df):
+    input_df.index = pd.to_datetime(input_df.index)
+    return input_df
+
 # ----- run app -----
 if __name__ == '__main__':
-    app.run_server()
+    app.run_server(debug=True)
