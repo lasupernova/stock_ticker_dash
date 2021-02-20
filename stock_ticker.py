@@ -94,11 +94,8 @@ def update_plot(stock_ticker, selected_currency, start_date, end_date):
         try:
             start_date_yf = datetime.strptime(s_date, '%Y-%m-%d').date()
             end_date_yf = datetime.strptime(e_date, '%Y-%m-%d').date()
-        except ValueError:
-            print('Exception captures: ', e.args)
-            print('Used date: ', start_date, type(start_date))
-            start_date_yf = start_date
-            end_date_yf = start_date
+        except Exception as e:
+            print('Exception captures: ', e)
 
 
     ticker = yf.Ticker(stock_ticker)
