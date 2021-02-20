@@ -129,7 +129,8 @@ def update_plot(n_clicks, stock_ticker, selected_currency, start_date, end_date)
             df['Close'] = df['Close'] * df['exchange']
             df.dropna(inplace=True)
             # save new values to traces
-            traces[counter]['y'] = df
+            traces[counter]['y'] = df['Close'] 
+            counter+=1
 
 
     fig = {
