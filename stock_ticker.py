@@ -57,8 +57,8 @@ app.layout = html.Div([
                         html.H4('Change the dates'),
                         dcc.DatePickerRange(
                             id='date-picker',
-                            min_date_allowed=datetime(2010,1,1).date(),
-                            max_date_allowed=datetime.today().date(),
+                            min_date_allowed=datetime(2010,1,1),
+                            max_date_allowed=datetime.today(),
                             start_date=datetime.today() - timedelta(weeks=4),
                             end_date=datetime.today(),
                             day_size=25
@@ -83,22 +83,32 @@ app.layout = html.Div([
              Input('date-picker','start_date'), Input('date-picker', 'end_date')])
 def update_plot(stock_ticker, selected_currency, start_date, end_date):
 
-    # yfinance requires datetime-objects for start and end-arguments, but the callback-Input() passes string values
-    start_date_yf = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S.%f').date()
-    end_date_yf = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S.%f').date()
+    # extract date-portion of date-time string and create datetime-object for passing to yf.Ticker-object
+    if type(start_date) == type(end_date) == str:
+
+        # split date into date and time parts - reason: callback supplies date incl. time on startup, but only date-section upon selection in date_pickedr 
+        s_date = start_date.split()[0]
+        e_date = end_date.split()[0]
+
+        # yfinance requires datetime-objects for start and end-arguments, but the callback-Input() passes string values
+        try:
+            start_date_yf = datetime.strptime(s_date, '%Y-%m-%d').date()
+            end_date_yf = datetime.strptime(e_date, '%Y-%m-%d').date()
+        except ValueError:
+            print('Exception captures: ', e.args)
+            print('Used date: ', start_date, type(start_date))
+            start_date_yf = start_date
+            end_date_yf = start_date
 
 
     ticker = yf.Ticker(stock_ticker)
     df = ticker.history(start=start_date_yf,  end=end_date_yf)
     df.sort_index(inplace=True)
 
-    # requests library requires string-objects for input in url that will retrieve cjurrency information - used in exchange_rate_per_date()
-    start_date = start_date.split(' ')[0]
-    end_date = end_date.split(' ')[0]
     
     # calculate new df values if currency is changed
     if selected_currency!=None and selected_currency != 'USD':
-        exchange_matrix = exchange_rate_per_date(start_date, end_date, selected_currency) 
+        exchange_matrix = exchange_rate_per_date(s_date, e_date, selected_currency) 
         exchange_matrix = df_index_to_datetime(exchange_matrix) #convert exchange_matrix index to datetime, becsaue df index is also datetime and need to be the same for pd.concat()
         exchange_matrix.columns = ['exchange']
         df = pd.concat([df, exchange_matrix], axis=1)
