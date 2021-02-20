@@ -115,12 +115,23 @@ def update_plot(n_clicks, stock_ticker, selected_currency, start_date, end_date)
     
     # calculate new df values if currency is changed
     if selected_currency!=None and selected_currency != 'USD':
-        exchange_matrix = exchange_rate_per_date(s_date, e_date, selected_currency) 
-        exchange_matrix = df_index_to_datetime(exchange_matrix) #convert exchange_matrix index to datetime, becsaue df index is also datetime and need to be the same for pd.concat()
-        exchange_matrix.columns = ['exchange']
-        df = pd.concat([df, exchange_matrix], axis=1)
-        df['Close'] = df['Close'] * df['exchange']
-        df.dropna(inplace=True)
+        # TODO: check why idx=traces.index(stock) breaks on second iteration if more than one stock is selected
+        counter=0 #NOTE: use of counter instead of idx=traces.index(stock), because traces.index(stock) throws error on second round/loop (when more than one stock is selected)
+        for stock in traces:
+            # get stock prices from traces
+            df = stock['y'].to_frame()
+            print('new df: ', df.columns, type(df))
+            # get exchange rate
+            exchange_matrix = exchange_rate_per_date(s_date, e_date, selected_currency) 
+            exchange_matrix = df_index_to_datetime(exchange_matrix) #convert exchange_matrix index to datetime, becsaue df index is also datetime and need to be the same for pd.concat()
+            exchange_matrix.columns = ['exchange']
+            # calculate prixe in chosen currency
+            df = pd.concat([df, exchange_matrix], axis=1)
+            df.dropna(inplace=True)
+            # save new values to traces
+            traces[counter]['y'] = df['Close'] 
+            counter+=1
+
 
     fig = {
         'data': traces,
