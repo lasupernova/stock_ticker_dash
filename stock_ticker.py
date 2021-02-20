@@ -8,21 +8,18 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
-# import pandas_datareader as web
 import requests
 import json
 import os
-# from dotenv import load_dotenv
 import pandas as pd
 import yfinance as yf
+import numpy as np
+from ticker_options import ticker_options
 
-# # --- load api key ----
-# load_dotenv()
-# IEX_API_KEY = os.getenv('IEX_API_KEY')
-
+ticker_options = ticker_options()
 
 # ----- dash object -----
 app = dash.Dash()
@@ -31,13 +28,14 @@ app.layout = html.Div([
                 html.H1('Comparative Stock Ticker'),
                 html.Div([
                         html.H4('Start typing a stock ticker:'),
-                        dcc.Input(
+                        dcc.Dropdown(
                             id='stock_ticker',
-                            value='TSLA',
-                            style=dict(fontSize=20, width=75, verticalAlign='top')
+                            options=ticker_options,
+                            multi=True,
+                            value=['TSLA']
                             )
                         ],
-                        style=dict(width='30%', display='inline-block', padding=5)
+                        style=dict(width='30%', display='inline-block', verticalAlign='top', padding=5)
                     ),
                 html.Div([
                         html.H4('Select a currency'),
@@ -53,7 +51,7 @@ app.layout = html.Div([
                             ],
                         style=dict(width='10%', display='inline-block', paddingLeft=5, horizontalAlign='left', verticalAlign='top')
                     ),
-                    html.Div([
+                html.Div([
                         html.H4('Change the dates'),
                         dcc.DatePickerRange(
                             id='date-picker',
@@ -66,6 +64,13 @@ app.layout = html.Div([
                             ],
                         style=dict(fontSize=15, width='30%', display='inline-block', paddingLeft=5, horizontalAlign='left', verticalAlign='top')
                     ),
+                html.Div([
+                        html.Button(id='submit_button',
+                                n_clicks=0,
+                                children="Submit",
+                                style=dict(fontSize=22, marginLeft='30px')
+                            )
+                    ], style=dict(display='inline-block')),
                 dcc.Graph(
                         id='stock_graph',
                         figure={
@@ -79,9 +84,10 @@ app.layout = html.Div([
 
 # ----- callbacks -----
 @app.callback(Output('stock_graph','figure'), 
-            [Input('stock_ticker','value'), Input('currency-selector', 'value'),
-             Input('date-picker','start_date'), Input('date-picker', 'end_date')])
-def update_plot(stock_ticker, selected_currency, start_date, end_date):
+            [Input('submit_button', 'n_clicks')],
+            [State('stock_ticker','value'), State('currency-selector', 'value'),
+             State('date-picker','start_date'), State('date-picker', 'end_date')])
+def update_plot(n_clicks, stock_ticker, selected_currency, start_date, end_date):
 
     # extract date-portion of date-time string and create datetime-object for passing to yf.Ticker-object
     if type(start_date) == type(end_date) == str:
@@ -97,10 +103,14 @@ def update_plot(stock_ticker, selected_currency, start_date, end_date):
         except Exception as e:
             print('Exception captures: ', e)
 
+    traces = []
 
-    ticker = yf.Ticker(stock_ticker)
-    df = ticker.history(start=start_date_yf,  end=end_date_yf)
-    df.sort_index(inplace=True)
+    for chosen_stock in stock_ticker:
+        ticker = yf.Ticker(chosen_stock)
+        df = ticker.history(start=start_date_yf,  end=end_date_yf)
+        df.sort_index(inplace=True)
+        traces.append({'x': df.index, 'y': df['Close'], 'name': chosen_stock})
+
 
     
     # calculate new df values if currency is changed
@@ -113,9 +123,7 @@ def update_plot(stock_ticker, selected_currency, start_date, end_date):
         df.dropna(inplace=True)
 
     fig = {
-        'data': [
-            {'x': df.index, 'y': df['Close']}
-                ],
+        'data': traces,
         'layout': dict(title=stock_ticker) 
                 }
 
