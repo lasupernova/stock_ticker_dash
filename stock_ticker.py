@@ -18,6 +18,7 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 from ticker_options import ticker_options
+from yahoo_fin import stock_info
 
 ticker_options = ticker_options()
 
@@ -25,7 +26,7 @@ ticker_options = ticker_options()
 app = dash.Dash()
 
 app.layout = html.Div([
-                html.H1('Comparative Stock Ticker'),
+                html.H1('Compare your stock gains'),
                 html.Div([
                         html.H4('Start typing a stock ticker:'),
                         dcc.Dropdown(
@@ -35,7 +36,7 @@ app.layout = html.Div([
                             value=['TSLA']
                             )
                         ],
-                        style=dict(width='30%', display='inline-block', verticalAlign='top', padding=5)
+                        style=dict(width='90%', display='inline-block', verticalAlign='top', padding=5)
                     ),
                 html.Div([
                         html.H4('Select a currency'),
@@ -65,10 +66,11 @@ app.layout = html.Div([
                         style=dict(fontSize=15, width='30%', display='inline-block', paddingLeft=5, horizontalAlign='left', verticalAlign='top')
                     ),
                 html.Div([
+                        html.H4(''),
                         html.Button(id='submit_button',
                                 n_clicks=0,
                                 children="Submit",
-                                style=dict(fontSize=22, marginLeft='30px')
+                                style=dict(fontSize=22, marginLeft='30px', paddingLeft=5, horizontalAlign='left', verticalAlign='bottom')
                             )
                     ], style=dict(display='inline-block')),
                 dcc.Graph(
@@ -78,8 +80,13 @@ app.layout = html.Div([
                                 {'x': [1,2], 'y': [3,1]}
                                     ],
                             'layout': dict(title='Pick a stock') 
-                            }
-                    )
+                            },
+                        style = dict(width='65%', display='inline-block')
+                    ),
+                html.Div([
+                        html.H4("Today's most interesting stock")
+                    ],
+                    style = dict(width='25%', display='inline-block'))
 ])
 
 # ----- callbacks -----
@@ -166,3 +173,11 @@ def df_index_to_datetime(input_df):
 # ----- run app -----
 if __name__ == '__main__':
     app.run_server(debug=True)
+
+def stock_ratings(ticker):
+    df = ticker.recommendations
+    print(df)
+
+def day_gainers():
+    gainers = stock_info.get_day_gainers(10)
+    return gainers
