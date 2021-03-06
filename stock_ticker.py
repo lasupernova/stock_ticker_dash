@@ -20,7 +20,9 @@ import numpy as np
 from ticker_options import ticker_options
 from yahoo_fin import stock_info
 
-ticker_options = ticker_options()
+ticker_opts = ticker_options()
+# ticker_opts=ticker_opts[:9900]+ticker_opts[9920:] 
+
 
 # ----- dash object -----
 app = dash.Dash()
@@ -31,9 +33,9 @@ app.layout = html.Div([
                         html.H4('Start typing a stock ticker:'),
                         dcc.Dropdown(
                             id='stock_ticker',
-                            options=ticker_options,
+                            options=ticker_opts[:-10],
                             multi=True,
-                            value=['TSLA']
+                            value=['TSLA','AMZN']
                             )
                         ],
                         style=dict(width='90%', display='inline-block', verticalAlign='top', padding=5)
@@ -170,10 +172,6 @@ def df_index_to_datetime(input_df):
     input_df.index = pd.to_datetime(input_df.index)
     return input_df
 
-# ----- run app -----
-if __name__ == '__main__':
-    app.run_server(debug=True)
-
 def stock_ratings(ticker):
     df = ticker.recommendations
     print(df)
@@ -181,3 +179,8 @@ def stock_ratings(ticker):
 def day_gainers():
     gainers = stock_info.get_day_gainers(10)
     return gainers
+
+
+# ----- run app -----
+if __name__ == '__main__':
+    app.run_server(debug=True)
