@@ -86,10 +86,10 @@ app.layout = html.Div([
                         style = dict(width='65%', display='inline-block')
                     ),
                 html.Div([
-                        html.H4("Today's most interesting stock")
+                        html.H4("Today's gainers")
                     ],
                     style = dict(width='25%', display='inline-block'))
-])
+], style=dict(backgroundColor='black', color='white'))
 
 # ----- callbacks -----
 @app.callback(Output('stock_graph','figure'), 
