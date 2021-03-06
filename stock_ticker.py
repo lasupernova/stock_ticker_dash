@@ -6,6 +6,7 @@
 
 # ---- imports ----
 import dash
+import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
@@ -19,9 +20,11 @@ import yfinance as yf
 import numpy as np
 from ticker_options import ticker_options
 from yahoo_fin import stock_info
+from get_day_gainers import day_gainers
 
 ticker_opts = ticker_options()
-# ticker_opts=ticker_opts[:9900]+ticker_opts[9920:] 
+
+df = day_gainers()
 
 
 # ----- dash object -----
@@ -33,7 +36,7 @@ app.layout = html.Div([
                         html.H4('Start typing a stock ticker:'),
                         dcc.Dropdown(
                             id='stock_ticker',
-                            options=ticker_opts[:-10],
+                            options=ticker_opts,
                             multi=True,
                             value=['TSLA','AMZN']
                             )
@@ -74,22 +77,32 @@ app.layout = html.Div([
                                 children="Submit",
                                 style=dict(fontSize=22, marginLeft='30px', paddingLeft=5, horizontalAlign='left', verticalAlign='bottom')
                             )
-                    ], style=dict(display='inline-block')),
-                dcc.Graph(
-                        id='stock_graph',
-                        figure={
-                            'data': [
-                                {'x': [1,2], 'y': [3,1]}
-                                    ],
-                            'layout': dict(title='Pick a stock') 
-                            },
-                        style = dict(width='65%', display='inline-block')
-                    ),
+                        ]
+                    , style=dict(display='inline-block')
+                ), 
                 html.Div([
-                        html.H4("Today's gainers")
-                    ],
-                    style = dict(width='25%', display='inline-block'))
-], style=dict(backgroundColor='black', color='white'))
+                        dcc.Graph(
+                            id='stock_graph',
+                            figure={
+                                'data': [
+                                    {'x': [1,2], 'y': [3,1]}
+                                        ],
+                                'layout': dict(title='Pick a stock') 
+                                },
+                        style = dict(width='45%', display='inline-block')
+                        ),
+                        html.Div([
+                            html.H4("Today's gainers"),
+                            dash_table.DataTable(
+                                id = 'gainers-table',
+                                columns = [{"name": i, "id": i} for i in df.columns],
+                                data = df.to_dict('records'))
+                            ],
+                        style = dict(width='35%', display='inline-block')
+                        )
+                ], style=dict(width='95%')
+                ) 
+]) #, style=dict(backgroundColor='black', color='white')
 
 # ----- callbacks -----
 @app.callback(Output('stock_graph','figure'), 
@@ -175,10 +188,6 @@ def df_index_to_datetime(input_df):
 def stock_ratings(ticker):
     df = ticker.recommendations
     print(df)
-
-def day_gainers():
-    gainers = stock_info.get_day_gainers(10)
-    return gainers
 
 
 # ----- run app -----
